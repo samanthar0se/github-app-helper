@@ -1,0 +1,7 @@
+.config/
+config.json
+keys/
+*.pem
+*.key
+*.tmp
+node_modules/

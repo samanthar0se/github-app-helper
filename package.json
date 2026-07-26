@@ -1,0 +1,11 @@
+{
+  "name": "github-app-helper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "1.18.4"
+  }
+}
