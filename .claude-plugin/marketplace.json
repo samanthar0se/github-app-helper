@@ -1,0 +1,14 @@
+{
+  "name": "github-app-helper",
+  "description": "GitHub App installation-token authentication for local Git and GitHub CLI work.",
+  "owner": {
+    "name": "github-app-helper"
+  },
+  "plugins": [
+    {
+      "name": "github-app",
+      "source": "./src",
+      "description": "Local Git and GitHub CLI authentication through short-lived GitHub App installation tokens."
+    }
+  ]
+}

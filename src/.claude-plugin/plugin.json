@@ -1,0 +1,11 @@
+{
+  "name": "github-app",
+  "description": "Local Git and GitHub CLI authentication through short-lived GitHub App installation tokens.",
+  "version": "1.0.0",
+  "mcpServers": {
+    "github-app": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/claude-plugin/mcp-server.mjs"]
+    }
+  }
+}

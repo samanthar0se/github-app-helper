@@ -6,8 +6,12 @@ Local Git and GitHub CLI authentication through short-lived GitHub App installat
 
 - `src/core.mjs` contains reusable configuration, repository, token, and GitHub CLI logic.
 - `src/github-app.mjs` is the thin command-line entrypoint.
+- `src/plugin-shared.mjs` contains the logic both agent plugins share: repository inference, fork command rendering, `gh` detection, and the handoff and refusal messages.
 - `src/opencode-plugin.mjs` provides repository-specific Git authentication and the `github_app_gh` tool; `src/opencode-plugin-core.mjs` contains its testable implementation.
-- `scripts/install.sh` installs a generated copy into `~/.local/bin`.
+- `src/claude-plugin/` provides the Claude Code plugin: an MCP server exposing the same two tools, plus `PreToolUse` and `SessionStart` hooks.
+- `src/` is the Claude Code plugin root. `src/.claude-plugin/plugin.json` is its manifest and `src/hooks/hooks.json` registers its hooks. `.claude-plugin/marketplace.json` at the repository root points at `./src`.
+- Installing a directory marketplace snapshots the whole plugin root and ignores `.gitignore`, so the plugin root is `src/` rather than the repository root. That keeps `node_modules/`, `test/`, and `scripts/` out of the copy: eleven files instead of several thousand.
+- `scripts/install.sh` installs a generated copy into `~/.local/bin`. It copies only `src/core.mjs` and `src/github-app.mjs`; neither imports plugin code, so the command-line tool stays independent of both plugins.
 - `~/.config/github-apps/config.json` contains machine-local profile configuration.
 - `~/.config/github-apps/keys/` contains private App keys.
 - Configuration, keys, and generated installation files must never be committed.
@@ -130,6 +134,39 @@ The tool never executes the command or accesses user credentials. It includes th
 The plugin blocks direct `gh` invocations through OpenCode's shell tool. If `github_app_gh` fails, the agent must fix or report the App installation access rather than falling back to user-authenticated GitHub CLI commands.
 
 Quit and restart OpenCode after changing its config or this plugin file.
+
+## Claude Code plugin
+
+Install the helper first, then add this repository as a local plugin. From a Claude Code session:
+
+```
+/plugin marketplace add C:/git/github-app-helper
+/plugin install github-app
+```
+
+The plugin provides the same two tools through an MCP server, so the agent calls them as `github_app_gh` and `github_fork_command`. It requires `node` on `PATH`.
+
+Installing snapshots `src/` into `~/.claude/plugins/cache/`, so the installed copy does not track edits in this repository. After changing plugin code, reinstall:
+
+```
+/plugin marketplace update github-app-helper
+/plugin uninstall github-app@github-app-helper
+/plugin install github-app@github-app-helper
+```
+
+Quit and restart Claude Code afterwards.
+
+### Differences from the OpenCode plugin
+
+Claude Code has no per-command shell environment hook, so credentials are configured differently:
+
+- The `SessionStart` hook writes the credential helper into the repository's **local Git config** rather than into ephemeral `GIT_CONFIG_*` variables. It runs only when the repository owner matches a configured App installation account, clears inherited helpers first, and is idempotent. Unlike the OpenCode plugin, the resulting configuration persists in `.git/config` after the session ends.
+- `GIT_TERMINAL_PROMPT=0` cannot be expressed in Git config. The credential helper still fails closed by returning `quit=1` for unmatched repositories, and Claude Code's Bash tool is not a terminal, so Git does not prompt.
+- The MCP server has no per-call session directory. It resolves the repository from its own working directory, from `--repo`/`-R` or a `gh repo` target, or from the explicit `repository` argument.
+
+The `PreToolUse` hook blocks direct `gh` invocations in the Bash tool with exit code 2, which returns the refusal to the agent. As in OpenCode, the agent must fix or report App installation access rather than falling back to user-authenticated GitHub CLI commands.
+
+Neither plugin exposes `GH_TOKEN` or `GITHUB_TOKEN` to shell commands.
 
 ## Maintenance
 
